@@ -1,11 +1,15 @@
 # GoVibe
 
-A Go rewrite of the Vibe Active Directory enumeration tool with pass-the-hash support.
+A Go rewrite of the Vibe Active Directory enumeration tool with pass-the-hash and Kerberos authentication support.
 
 ## Features
 
 - **LDAP/LDAPS Enumeration**: Enumerate users, groups, computers, SPNs, password policies
-- **Pass-the-Hash Authentication**: Authenticate using password or NTLM hashe
+- **Multiple Authentication Methods**:
+  - Password authentication
+  - Pass-the-Hash (NTLM)
+  - Kerberos authentication via ccache (TGT)
+- **SOCKS5 Proxy Support**: Route traffic through a SOCKS5 proxy (including Kerberos KDC traffic)
 - **Multiple Output Formats**: JSON and HTML output (similar to ldapdomaindump)
 - **Interactive Shell**: Query and search enumerated data
 - **Cross-Platform**: Compiles for Linux, Windows, and macOS
@@ -39,6 +43,28 @@ sudo make install
 ./govibe -U administrator -H '31d6cfe0d16ae931b73c59d7e0c089c0' -D corp.local -I 192.168.1.10
 ```
 
+### With Kerberos (ccache)
+```bash
+# Using a ccache file from impacket's getTGT.py, Rubeus, or similar
+./govibe -k --ccache /tmp/administrator.ccache -D corp.local -I 192.168.1.10 --dc-host dc01.corp.local
+
+# Using KRB5CCNAME environment variable
+export KRB5CCNAME=/tmp/administrator.ccache
+./govibe -k -D corp.local -I 192.168.1.10 --dc-host dc01.corp.local
+
+# Kerberos with no password prompt (useful in scripts)
+./govibe -k --no-pass --ccache /tmp/admin.ccache -D corp.local -I 192.168.1.10 --dc-host dc01.corp.local
+```
+
+### With SOCKS5 Proxy
+```bash
+# Password auth through SOCKS5
+./govibe -U administrator -P 'Password123' -D corp.local -I 192.168.1.10 -x 127.0.0.1:1080
+
+# Kerberos through SOCKS5 (KDC traffic is also proxied)
+./govibe -k --ccache /tmp/admin.ccache -D corp.local -I 192.168.1.10 --dc-host dc01.corp.local -x 127.0.0.1:1080
+```
+
 ### With Unencrypted LDAP
 ```bash
 ./govibe -U administrator -P 'Password123' -D corp.local -I 192.168.1.10 -u
@@ -53,7 +79,7 @@ sudo make install
 
 | Option | Description |
 |--------|-------------|
-| `-U, --username` | Username for authentication (required) |
+| `-U, --username` | Username for authentication |
 | `-P, --password` | Password for authentication |
 | `-H, --hash` | NT hash for pass-the-hash authentication |
 | `-D, --domain` | Fully Qualified Domain Name (required) |
@@ -61,7 +87,36 @@ sudo make install
 | `-p, --port` | LDAP port (default: 636 for LDAPS, 389 for LDAP) |
 | `-u, --unencrypted` | Use unencrypted LDAP instead of LDAPS |
 | `-o, --output` | Output directory for JSON/HTML files |
+| `-x, --proxy` | SOCKS5 proxy address (e.g., 127.0.0.1:1080) |
+| `-k, --kerberos` | Use Kerberos authentication |
+| `--ccache` | Path to ccache file (or use KRB5CCNAME env var) |
+| `--dc-host` | Hostname of DC for Kerberos SPN (e.g., dc01.corp.local) |
+| `--no-pass` | Skip password prompt (for Kerberos or when not needed) |
 | `-h, --help` | Show help message |
+
+## Kerberos Authentication
+
+GoVibe supports Kerberos authentication using a ccache file containing a valid TGT. This is useful for:
+
+- **Pass-the-Ticket attacks**: Use tickets extracted from memory
+- **Delegation attacks**: Use tickets obtained through delegation
+- **Avoiding password exposure**: Authenticate without transmitting credentials
+
+### Obtaining a ccache file
+
+```bash
+# Using impacket's getTGT.py
+getTGT.py corp.local/administrator:'Password123' -dc-ip 192.168.1.10
+
+# Using Rubeus (convert .kirbi to .ccache with ticketConverter.py)
+ticketConverter.py administrator.kirbi administrator.ccache
+```
+
+### Important Notes
+
+- The `--dc-host` flag should be the **hostname** (FQDN) of the DC, not the IP address. This is used to build the Kerberos SPN (`ldap/dc01.corp.local`).
+- If `--dc-host` is not specified, the `-I` (dc-ip) value is used, which may fail if the SPN was registered with a hostname.
+- LDAPS (port 636) is recommended for Kerberos authentication. Plain LDAP (port 389) requires SASL signing which is not currently supported.
 
 ## Interactive Shell Commands
 
@@ -102,6 +157,8 @@ The tool generates both JSON and HTML files in the output directory:
 
 - `github.com/go-ldap/ldap/v3` - LDAP client library
 - `github.com/Azure/go-ntlmssp` - NTLM authentication (for pass-the-hash)
+- `github.com/jcmturner/gokrb5/v8` - Kerberos 5 library (for Kerberos auth)
+- `golang.org/x/net/proxy` - SOCKS5 proxy support
 - `golang.org/x/term` - Terminal password input
 
 ## References
