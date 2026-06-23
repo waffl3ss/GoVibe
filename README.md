@@ -10,7 +10,8 @@ A Go rewrite of the Vibe Active Directory enumeration tool with pass-the-hash an
   - Pass-the-Hash (NTLM)
   - Kerberos authentication via ccache (TGT)
 - **SOCKS5 Proxy Support**: Route traffic through a SOCKS5 proxy (including Kerberos KDC traffic)
-- **Multiple Output Formats**: JSON and HTML output (similar to ldapdomaindump)
+- **Multiple Output Formats**: JSON and HTML output (similar to ldapdomaindump but prettier)
+- **BloodHound Data**: Basic bloodhound enumeartion while maintaining the stealthy methods of GoVibe
 - **Interactive Shell**: Query and search enumerated data
 - **Cross-Platform**: Compiles for Linux, Windows, and macOS
 
@@ -89,6 +90,7 @@ export KRB5CCNAME=/tmp/administrator.ccache
 | `-o, --output` | Output directory for JSON/HTML files |
 | `-x, --proxy` | SOCKS5 proxy address (e.g., 127.0.0.1:1080) |
 | `-k, --kerberos` | Use Kerberos authentication |
+| `-b, --bloodhound` | Generate Bloodhound CE compatiable zip file |
 | `--ccache` | Path to ccache file (or use KRB5CCNAME env var) |
 | `--dc-host` | Hostname of DC for Kerberos SPN (e.g., dc01.corp.local) |
 | `--no-pass` | Skip password prompt (for Kerberos or when not needed) |
@@ -152,14 +154,6 @@ The tool generates both JSON and HTML files in the output directory:
 - `domain_spns.html` - SPN table (Kerberoastable accounts)
 - `domain_policy.html` - Password policies
 - `domain_index.html` - Overview with statistics
-
-## Dependencies
-
-- `github.com/go-ldap/ldap/v3` - LDAP client library
-- `github.com/Azure/go-ntlmssp` - NTLM authentication (for pass-the-hash)
-- `github.com/jcmturner/gokrb5/v8` - Kerberos 5 library (for Kerberos auth)
-- `golang.org/x/net/proxy` - SOCKS5 proxy support
-- `golang.org/x/term` - Terminal password input
 
 ## References
 
